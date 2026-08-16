@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def _setup_kaggle_auth() -> None:
     """
-    Support both Kaggle token formats and ensure proper file permissions:
+    Support both Kaggle token formats and ensure proper configuration:
 
     New format (KGAT_...):  Set KAGGLE_API_TOKEN env var (writes ~/.kaggle/access_token).
     Old format:             Set KAGGLE_USERNAME + KAGGLE_KEY env vars,
@@ -44,24 +44,31 @@ def _setup_kaggle_auth() -> None:
         except Exception:
             pass
 
+    # If api_token was provided but does not start with KGAT_, it is likely a legacy API key
+    if api_token and not api_token.startswith("KGAT_"):
+        if not key:
+            key = api_token
+        api_token = ""
+
     kaggle_dir = pathlib.Path.home() / ".kaggle"
     try:
         kaggle_dir.mkdir(parents=True, exist_ok=True)
     except Exception:
         pass
 
-    if api_token:
-        try:
-            os.environ["KAGGLE_API_TOKEN"] = api_token
-            access_token_path = kaggle_dir / "access_token"
-            access_token_path.write_text(api_token, encoding="utf-8")
-            logger.info("Configured Kaggle authentication using KAGGLE_API_TOKEN.")
-        except Exception as exc:
-            logger.warning("Could not write ~/.kaggle/access_token: %s", exc)
-    elif username and key:
+    if username and key:
         try:
             os.environ["KAGGLE_USERNAME"] = username
             os.environ["KAGGLE_KEY"] = key
+            # Remove any stale access_token to prevent OAuth precedence conflicts
+            os.environ.pop("KAGGLE_API_TOKEN", None)
+            stale_token = kaggle_dir / "access_token"
+            if stale_token.exists():
+                try:
+                    stale_token.unlink()
+                except Exception:
+                    pass
+
             config_json = kaggle_dir / "kaggle.json"
             config_json.write_text(
                 f'{{"username":"{username}","key":"{key}"}}', encoding="utf-8"
@@ -69,12 +76,23 @@ def _setup_kaggle_auth() -> None:
             logger.info("Using KAGGLE_USERNAME + KAGGLE_KEY for authentication.")
         except Exception as exc:
             logger.warning("Could not write ~/.kaggle/kaggle.json: %s", exc)
+
+    elif api_token and api_token.startswith("KGAT_"):
+        try:
+            os.environ["KAGGLE_API_TOKEN"] = api_token
+            access_token_path = kaggle_dir / "access_token"
+            access_token_path.write_text(api_token, encoding="utf-8")
+            logger.info("Configured Kaggle authentication using KAGGLE_API_TOKEN.")
+        except Exception as exc:
+            logger.warning("Could not write ~/.kaggle/access_token: %s", exc)
+
     else:
         if not ((kaggle_dir / "access_token").exists() or (kaggle_dir / "kaggle.json").exists()):
             logger.warning(
-                "No Kaggle credentials found in environment. "
-                "Set KAGGLE_API_TOKEN or KAGGLE_USERNAME + KAGGLE_KEY."
+                "No valid Kaggle credentials configured. "
+                "Provide KAGGLE_USERNAME + KAGGLE_KEY or a valid KAGGLE_API_TOKEN (KGAT_...)."
             )
+
 
 
 
