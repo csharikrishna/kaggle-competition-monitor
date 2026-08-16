@@ -393,16 +393,24 @@ class TelegramBot:
                     else:
                         age_label = get_cache_age_label() if get_cache_age_label else "unknown"
                         count = len(results)
-                        top_items = results[:3] if command in ("/top", "top") else results[:5]
+                        is_top = command in ("/top", "top")
+                        items = results[:5] if is_top else results
+                        label_str = "Top 5" if is_top else f"All {count}"
                         header = (
-                            f"[RESULTS] Showing {len(top_items)} of {count} competitions"
+                            f"[RESULTS] {label_str} competition(s)"
                             f" (data from {age_label}):"
                         )
                         self.send_to_chat(chat_id, header)
                         time.sleep(0.3)
-                        for comp in top_items:
+                        for comp in items:
                             self.send_to_chat(chat_id, format_competition_message(comp))
                             time.sleep(0.5)
+                        if not is_top and count > 5:
+                            self.send_to_chat(
+                                chat_id,
+                                f"[DONE] Sent all {count} competitions above threshold."
+                                f" Use /top for just the 5 highest-scored.",
+                            )
                 except Exception as exc:
                     logger.error("Scan error: %s", exc)
                     self.send_to_chat(chat_id, f"[ERROR] Failed to retrieve results: {exc}")
