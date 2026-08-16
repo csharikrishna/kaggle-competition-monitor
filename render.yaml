@@ -7,8 +7,13 @@ services:
     envVars:
       - key: KAGGLE_API_TOKEN
         sync: false
+      - key: KAGGLE_USERNAME
+        sync: false
+      - key: KAGGLE_KEY
+        sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+
       - key: MIN_SCORE
         value: "75"
       - key: MAX_PAGES
