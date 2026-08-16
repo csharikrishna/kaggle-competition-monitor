@@ -11,6 +11,7 @@ file-level metadata (name, size) without transferring any data.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -71,23 +72,35 @@ def _bytes_to_mb(size_bytes: int) -> float:
     return round(size_bytes / (1024 * 1024), 2)
 
 
-def enrich_with_dataset_info(competition: dict, api: KaggleApi) -> dict:
+def enrich_with_dataset_info(competition: dict, api: KaggleApi, delay_seconds: float = 0.0) -> dict:
     """
     Fetch dataset file metadata for *competition* and add to the dict.
 
     Modifies competition in-place and also returns it.
 
+    Parameters
+    ----------
+    competition   : The competition dict to enrich in-place.
+    api           : Authenticated KaggleApi instance.
+    delay_seconds : Seconds to sleep before issuing the API call.
+                    Set > 0 during batch processing to avoid rate-limiting.
+
     Fields added / updated
     ----------------------
-    dataset_size_mb : float  – total size of all files in MB
-    file_count      : int    – number of files
-    file_types      : list   – unique lowercase extensions
-    modalities      : list   – inferred data modalities (image/text/tabular/…)
-    dataset_summary : str    – human-readable one-liner
+    dataset_size_mb : float  - total size of all files in MB
+    file_count      : int    - number of files
+    file_types      : list   - unique lowercase extensions
+    modalities      : list   - inferred data modalities (image/text/tabular/...)
+    dataset_summary : str    - human-readable one-liner
     """
     comp_id: str = competition.get("id", "")
     if not comp_id:
         return competition
+
+    # Throttle before calling the Kaggle API to respect rate limits
+    if delay_seconds > 0:
+        time.sleep(delay_seconds)
+
     # The API expects just the slug (e.g. "titanic"), not a full URL
     slug = comp_id.split("/")[-1] if "/" in comp_id else comp_id
     logger.info("Fetching dataset info for: %s", slug)

@@ -6,7 +6,9 @@
 kaggle.json
 *.key
 data/subscribers.json
+data/competition_cache.json
 *.tmp
+
 
 # Python
 __pycache__/

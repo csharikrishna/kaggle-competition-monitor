@@ -285,6 +285,7 @@ class TelegramBot:
         self,
         update: dict,
         on_scan_requested: Callable[[], list[dict]] | None = None,
+        get_cache_age_label: Callable[[], str] | None = None,
     ) -> None:
         """Route incoming user commands."""
         message = update.get("message") or update.get("edited_message")
@@ -359,27 +360,35 @@ class TelegramBot:
             )
 
         elif command in ("/scan", "/latest", "/top", "scan", "top"):
-            self.send_to_chat(chat_id, "[INFO] Fetching and evaluating active Kaggle competitions...")
             if on_scan_requested:
                 try:
                     results = on_scan_requested()
                     if not results:
                         self.send_to_chat(
                             chat_id,
-                            "[INFO] No active competitions meet the qualification threshold at this moment.",
+                            "[NOTICE] No data in cache yet. The background scanner is running its"
+                            " first cycle. Please try again in about 1 minute.",
                         )
                     else:
+                        age_label = get_cache_age_label() if get_cache_age_label else "unknown"
+                        count = len(results)
                         top_items = results[:3] if command in ("/top", "top") else results[:5]
+                        header = (
+                            f"[RESULTS] Showing {len(top_items)} of {count} competitions"
+                            f" (data from {age_label}):"
+                        )
+                        self.send_to_chat(chat_id, header)
+                        time.sleep(0.3)
                         for comp in top_items:
                             self.send_to_chat(chat_id, format_competition_message(comp))
                             time.sleep(0.5)
                 except Exception as exc:
                     logger.error("Scan error: %s", exc)
-                    self.send_to_chat(chat_id, f"[ERROR] Failed to execute scan: {exc}")
+                    self.send_to_chat(chat_id, f"[ERROR] Failed to retrieve results: {exc}")
             else:
                 self.send_to_chat(
                     chat_id,
-                    "[NOTICE] Real-time scanner is currently initializing. Please try again shortly.",
+                    "[NOTICE] Scanner is initializing. Please try again in a moment.",
                 )
 
         else:
@@ -392,6 +401,7 @@ class TelegramBot:
         self,
         poll_timeout: int = 25,
         on_scan_requested: Callable[[], list[dict]] | None = None,
+        get_cache_age_label: Callable[[], str] | None = None,
     ) -> None:
         """Start long-polling loop for incoming messages."""
         logger.info("Starting Telegram Bot long-polling service...")
@@ -401,7 +411,11 @@ class TelegramBot:
                 updates = self.get_updates(offset=offset, timeout=poll_timeout)
                 for update in updates:
                     offset = max(offset, update.get("update_id", 0) + 1)
-                    self.handle_update(update, on_scan_requested=on_scan_requested)
+                    self.handle_update(
+                        update,
+                        on_scan_requested=on_scan_requested,
+                        get_cache_age_label=get_cache_age_label,
+                    )
             except Exception as exc:
                 logger.error("Polling loop encountered error: %s", exc)
                 time.sleep(3)
