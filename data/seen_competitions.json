@@ -1,0 +1,24 @@
+{
+  "competitions": [
+    "https://www.kaggle.com/competitions/ai-agent-security-multi-step-tool-attacks",
+    "https://www.kaggle.com/competitions/arc-prize-2026-arc-agi-2",
+    "https://www.kaggle.com/competitions/arc-prize-2026-arc-agi-3",
+    "https://www.kaggle.com/competitions/arc-prize-2026-paper-track",
+    "https://www.kaggle.com/competitions/biohub-cell-tracking-during-development",
+    "https://www.kaggle.com/competitions/connectx",
+    "https://www.kaggle.com/competitions/contradictory-my-dear-watson",
+    "https://www.kaggle.com/competitions/digit-recognizer",
+    "https://www.kaggle.com/competitions/home-data-for-ml-course",
+    "https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques",
+    "https://www.kaggle.com/competitions/kaggriculture",
+    "https://www.kaggle.com/competitions/llm-classification-finetuning",
+    "https://www.kaggle.com/competitions/nlp-getting-started",
+    "https://www.kaggle.com/competitions/playground-series-s6e8",
+    "https://www.kaggle.com/competitions/pokemon-tcg-ai-battle-challenge-strategy",
+    "https://www.kaggle.com/competitions/rsna-knee-abnormality-detection",
+    "https://www.kaggle.com/competitions/spaceship-titanic",
+    "https://www.kaggle.com/competitions/store-sales-time-series-forecasting",
+    "https://www.kaggle.com/competitions/titanic",
+    "https://www.kaggle.com/competitions/tpu-getting-started"
+  ]
+}

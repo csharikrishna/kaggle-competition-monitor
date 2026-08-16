@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: kaggle-competition-monitor
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: KAGGLE_API_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: MIN_SCORE
+        value: "75"
+      - key: MAX_PAGES
+        value: "3"
+      - key: POLL_INTERVAL_HOURS
+        value: "6"

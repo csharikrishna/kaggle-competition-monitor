@@ -1,0 +1,43 @@
+# .gitignore
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Credentials & User Data – NEVER commit these
+.env
+kaggle.json
+*.key
+data/subscribers.json
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
