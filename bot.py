@@ -177,12 +177,19 @@ def run_interactive_bot() -> None:
         if cached_competitions and (now - last_cache_time < 900):
             return cached_competitions
 
+        if not client.authenticated:
+            client.try_authenticate()
+
         results = fetch_and_score_active(client)
+        if not results and not client.authenticated:
+            return []
+
         min_score = int(os.environ.get("MIN_SCORE", str(MIN_NOTIFY_SCORE)))
         qualified = [c for c in results if c["total_score"] >= min_score]
         cached_competitions = qualified if qualified else results
         last_cache_time = now
         return cached_competitions
+
 
     # Start background scheduler
     interval_hours = float(os.environ.get("POLL_INTERVAL_HOURS", "6.0"))

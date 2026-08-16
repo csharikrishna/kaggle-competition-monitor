@@ -22,34 +22,48 @@ logger = logging.getLogger(__name__)
 
 def _setup_kaggle_auth() -> None:
     """
-    Support both Kaggle token formats:
+    Support both Kaggle token formats and ensure proper file permissions:
 
     New format (KGAT_...):  Set KAGGLE_API_TOKEN env var (writes ~/.kaggle/access_token).
     Old format:             Set KAGGLE_USERNAME + KAGGLE_KEY env vars,
                             or place kaggle.json at ~/.kaggle/kaggle.json.
     """
-    api_token = os.environ.get("KAGGLE_API_TOKEN", "").strip()
-    username = os.environ.get("KAGGLE_USERNAME", "").strip()
-    key = os.environ.get("KAGGLE_KEY", "").strip()
+    api_token = os.environ.get("KAGGLE_API_TOKEN", "").strip().strip("'\"")
+    username = os.environ.get("KAGGLE_USERNAME", "").strip().strip("'\"")
+    key = os.environ.get("KAGGLE_KEY", "").strip().strip("'\"")
+
+    kaggle_dir = pathlib.Path.home() / ".kaggle"
+    try:
+        kaggle_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
 
     if api_token:
         try:
-            kaggle_dir = pathlib.Path.home() / ".kaggle"
-            kaggle_dir.mkdir(parents=True, exist_ok=True)
+            os.environ["KAGGLE_API_TOKEN"] = api_token
             access_token_path = kaggle_dir / "access_token"
             access_token_path.write_text(api_token, encoding="utf-8")
             logger.info("Configured Kaggle authentication using KAGGLE_API_TOKEN.")
         except Exception as exc:
             logger.warning("Could not write ~/.kaggle/access_token: %s", exc)
     elif username and key:
-        logger.info("Using KAGGLE_USERNAME + KAGGLE_KEY for authentication.")
+        try:
+            os.environ["KAGGLE_USERNAME"] = username
+            os.environ["KAGGLE_KEY"] = key
+            config_json = kaggle_dir / "kaggle.json"
+            config_json.write_text(
+                f'{{"username":"{username}","key":"{key}"}}', encoding="utf-8"
+            )
+            logger.info("Using KAGGLE_USERNAME + KAGGLE_KEY for authentication.")
+        except Exception as exc:
+            logger.warning("Could not write ~/.kaggle/kaggle.json: %s", exc)
     else:
-        kaggle_dir = pathlib.Path.home() / ".kaggle"
         if not ((kaggle_dir / "access_token").exists() or (kaggle_dir / "kaggle.json").exists()):
             logger.warning(
                 "No Kaggle credentials found in environment. "
-                "Set KAGGLE_API_TOKEN or KAGGLE_USERNAME + KAGGLE_KEY in .env."
+                "Set KAGGLE_API_TOKEN or KAGGLE_USERNAME + KAGGLE_KEY."
             )
+
 
 
 # ---------------------------------------------------------------------------
@@ -189,11 +203,26 @@ class KaggleClient:
     """Thin wrapper around KaggleApi for competition listing."""
 
     def __init__(self) -> None:
-        _setup_kaggle_auth()
+        self.authenticated = False
         self._api = KaggleApi()
-        self._api.authenticate()
-        logger.info("Kaggle API authenticated successfully.")
+        self.try_authenticate()
 
+    def try_authenticate(self) -> bool:
+        """Attempt authentication without allowing SystemExit to terminate the server."""
+        _setup_kaggle_auth()
+        try:
+            self._api.authenticate()
+            self.authenticated = True
+            logger.info("Kaggle API authenticated successfully.")
+            return True
+        except (SystemExit, Exception) as exc:
+            self.authenticated = False
+            logger.warning(
+                "Kaggle API authentication pending or token invalid (%s). "
+                "The bot will remain active and retry when valid credentials are provided.",
+                exc,
+            )
+            return False
 
     def fetch_competitions(
         self,
@@ -220,6 +249,10 @@ class KaggleClient:
         -------
         List of normalized competition dicts.
         """
+        if not self.authenticated:
+            if not self.try_authenticate():
+                return []
+
         logger.info(
             "Fetching competitions: page=%d sort_by=%s category=%s group=%s search=%r",
             page,
@@ -229,13 +262,17 @@ class KaggleClient:
             search,
         )
 
-        raw_response = self._api.competitions_list(
-            page=page,
-            search=search,
-            sort_by=sort_by,
-            category=category,
-            group=group,
-        )
+        try:
+            raw_response = self._api.competitions_list(
+                page=page,
+                search=search,
+                sort_by=sort_by,
+                category=category,
+                group=group,
+            )
+        except Exception as exc:
+            logger.warning("competitions_list call failed: %s", exc)
+            return []
 
         # Kaggle SDK v1.7+ may return ApiListCompetitionsResponse instead of list.
         # We try to iterate directly first; if that fails we extract .competitions.
@@ -247,6 +284,7 @@ class KaggleClient:
         competitions = [_normalize(c) for c in raw_list]
         logger.info("Fetched %d competitions.", len(competitions))
         return competitions
+
 
 
 
