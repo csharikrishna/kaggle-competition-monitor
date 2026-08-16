@@ -180,7 +180,32 @@ def _days_remaining_from_dt(deadline_dt: Any) -> int:
         return 0
 
 
+_KAGGLE_BASE = "https://www.kaggle.com/competitions/"
+
+
+def _build_url(ref: str) -> str:
+    """
+    Build a clean Kaggle competition URL from *ref*.
+
+    The Kaggle SDK returns either:
+    - A slug:    "digit-recognizer"
+    - A full URL: "https://www.kaggle.com/competitions/digit-recognizer"
+
+    We always return the canonical full URL without duplication.
+    """
+    if not ref:
+        return ""
+    # Strip any leading/trailing whitespace
+    ref = ref.strip()
+    # If ref is already a full URL, return it as-is (strip trailing slashes)
+    if ref.startswith("http"):
+        return ref.rstrip("/")
+    # Otherwise prepend the base URL
+    return _KAGGLE_BASE + ref.lstrip("/")
+
+
 def _normalize(raw: Any) -> dict:
+
     """Convert a raw Kaggle API competition object into our standard dict."""
     ref: str = getattr(raw, "ref", "") or ""
     title: str = getattr(raw, "title", "") or ""
@@ -214,7 +239,7 @@ def _normalize(raw: Any) -> dict:
     return {
         "id": ref,
         "name": title,
-        "url": f"https://www.kaggle.com/competitions/{ref}",
+        "url": _build_url(ref),
         "description": description,
         "deadline": deadline_str,
         "days_remaining": _days_remaining_from_dt(deadline_raw),

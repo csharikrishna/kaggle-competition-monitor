@@ -91,30 +91,51 @@ def format_competition_message(competition: dict) -> str:
     total = competition.get("total_score", 0)
     name = competition.get("name", "Unknown")
     modalities = competition.get("modalities", [])
-    category_str = "/".join(m.title() for m in modalities) if modalities else competition.get("category", "General ML")
+    category_str = (
+        "/".join(m.title() for m in modalities)
+        if modalities
+        else competition.get("category", "General ML")
+    )
+
+    # Dataset line
+    size_mb = competition.get("dataset_size_mb", 0)
+    size_str = _fmt_size(size_mb)
+    file_count = competition.get("file_count", 0)
+    file_types = competition.get("file_types", [])
+    types_str = (", ".join(f".{t.lstrip('.')}" for t in file_types)) if file_types else "unknown"
+    dataset_line = f"{size_str} | {file_count:,} files | {types_str}"
+
+    # Score breakdown — fixed-width columns
+    s_rel  = competition.get("score_relevance",   0)
+    s_port = competition.get("score_portfolio",   0)
+    s_prize= competition.get("score_prize",       0)
+    s_feas = competition.get("score_feasibility", 0)
+    s_time = competition.get("score_time",        0)
+    s_comp = competition.get("score_teams",       0)
 
     lines = [
-        f"[{label.upper()}] NEW KAGGLE COMPETITION",
-        "----------------------------------------",
-        f"Title:         {name}",
-        f"Overall Score: {total}/100",
-        "",
-        f"Category:      {category_str}",
-        f"Prize:         {_fmt_prize(competition)}",
-        f"Dataset:       {_fmt_size(competition.get('dataset_size_mb', 0))} ({competition.get('file_count', 0):,} files, {', '.join(competition.get('file_types', [])) or 'unknown'})",
-        f"Teams:         {competition.get('teams', 0):,}",
-        f"Deadline:      {_fmt_deadline(competition)}",
-        "",
-        "Score Breakdown:",
-        f"  • Relevance:   {competition.get('score_relevance',   0):2d}/30",
-        f"  • Portfolio:   {competition.get('score_portfolio',   0):2d}/20",
-        f"  • Prize:       {competition.get('score_prize',       0):2d}/15",
-        f"  • Feasibility: {competition.get('score_feasibility', 0):2d}/15",
-        f"  • Time:        {competition.get('score_time',        0):2d}/10",
-        f"  • Competition: {competition.get('score_teams',       0):2d}/10",
-        "",
-        f"Assessment:    {_why_score(competition)}",
-        f"URL:           {competition.get('url', '')}",
+        f"[{label.upper()}] NEW COMPETITION",
+        "=" * 40,
+        f"  {name}",
+        f"  Score: {total}/100",
+        "-" * 40,
+        f"  Category:  {category_str}",
+        f"  Prize:     {_fmt_prize(competition)}",
+        f"  Dataset:   {dataset_line}",
+        f"  Teams:     {competition.get('teams', 0):,}",
+        f"  Deadline:  {_fmt_deadline(competition)}",
+        "-" * 40,
+        "  Score Breakdown:",
+        f"    Relevance    {s_rel:2d}/30",
+        f"    Portfolio    {s_port:2d}/20",
+        f"    Prize        {s_prize:2d}/15",
+        f"    Feasibility  {s_feas:2d}/15",
+        f"    Time         {s_time:2d}/10",
+        f"    Competition  {s_comp:2d}/10",
+        "-" * 40,
+        f"  {_why_score(competition)}",
+        f"  {competition.get('url', '')}",
+        "=" * 40,
     ]
 
     message = "\n".join(lines)
