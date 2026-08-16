@@ -8,6 +8,7 @@ Every other module works with the Competition dict shape – never raw API objec
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import pathlib
@@ -31,6 +32,17 @@ def _setup_kaggle_auth() -> None:
     api_token = os.environ.get("KAGGLE_API_TOKEN", "").strip().strip("'\"")
     username = os.environ.get("KAGGLE_USERNAME", "").strip().strip("'\"")
     key = os.environ.get("KAGGLE_KEY", "").strip().strip("'\"")
+
+    # If user pasted the whole kaggle.json content into KAGGLE_API_TOKEN
+    if api_token.startswith("{") and "username" in api_token:
+        try:
+            data = json.loads(api_token)
+            username = data.get("username", "").strip()
+            key = data.get("key", "").strip()
+            api_token = ""
+            logger.info("Auto-extracted username and key from JSON payload.")
+        except Exception:
+            pass
 
     kaggle_dir = pathlib.Path.home() / ".kaggle"
     try:
@@ -63,6 +75,7 @@ def _setup_kaggle_auth() -> None:
                 "No Kaggle credentials found in environment. "
                 "Set KAGGLE_API_TOKEN or KAGGLE_USERNAME + KAGGLE_KEY."
             )
+
 
 
 
